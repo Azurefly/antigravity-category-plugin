@@ -1,0 +1,7 @@
+dist/
+*.so
+*.dylib
+*.dll
+*.h
+*.orig.bak
+.DS_Store

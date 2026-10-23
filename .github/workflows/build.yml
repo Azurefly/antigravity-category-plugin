@@ -1,0 +1,113 @@
+name: Build & Release Multi-Platform Plugin
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.x"
+      - run: go test -race -v ./...
+
+  build-linux:
+    name: Build (linux/${{ matrix.goarch }} glibc>=2.31)
+    needs: test
+    runs-on: ubuntu-latest
+    container: golang:1.24-bullseye
+    strategy:
+      fail-fast: false
+      matrix:
+        goarch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Linux arm64 cross C compiler
+        if: matrix.goarch == 'arm64'
+        run: apt-get update && apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu libc6-dev-arm64-cross
+      - name: Build shared library
+        shell: bash
+        run: sh scripts/ci-build.sh ${{ matrix.goarch }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: plugin-linux-${{ matrix.goarch }}
+          path: dist/*
+          if-no-files-found: error
+
+  build-native:
+    name: Build (${{ matrix.goos }}/${{ matrix.goarch }})
+    needs: test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            goos: darwin
+            goarch: arm64
+          - os: macos-latest
+            goos: darwin
+            goarch: amd64
+          - os: windows-latest
+            goos: windows
+            goarch: amd64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.x"
+      - name: Build shared library
+        shell: bash
+        run: sh scripts/ci-build.sh ${{ matrix.goarch }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: plugin-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/*
+          if-no-files-found: error
+
+  release:
+    name: Package & Publish Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build-linux, build-native]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Package CLIProxyAPI Plugin Store Archives
+        run: |
+          PLUGIN_ID="antigravity-category-plugin"
+          VERSION=${GITHUB_REF_NAME#v}
+          mkdir -p release_dist
+          for dir in artifacts/plugin-*; do
+            target=${dir#artifacts/plugin-}
+            goos=${target%-*}
+            goarch=${target##*-}
+            zip -j -q "release_dist/${PLUGIN_ID}_${VERSION}_${goos}_${goarch}.zip" "$dir"/*
+            for f in "$dir"/*; do
+              ext=${f##*.}
+              cp "$f" "release_dist/${PLUGIN_ID}-v${VERSION}-${goos}-${goarch}.${ext}"
+            done
+          done
+          cd release_dist
+          sha256sum *.zip *.so *.dylib *.dll > checksums.txt
+          cat checksums.txt
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes \
+            --notes "安装与升级步骤见 README（https://github.com/$GITHUB_REPOSITORY#readme）的「安装」「升级」章节。升级后务必重启 CPA，并在浏览器强制刷新管理面板。" \
+            release_dist/*
