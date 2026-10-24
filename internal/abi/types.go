@@ -191,10 +191,12 @@ type HTTPRequest struct {
 	Body    []byte      `json:"body,omitempty"`
 }
 
+// HTTPResponse mirrors CPA's untagged pluginapi.HTTPResponse, which host.http.do
+// serializes with Go field names ("StatusCode", not "status_code").
 type HTTPResponse struct {
-	StatusCode int         `json:"status_code"`
-	Headers    http.Header `json:"headers"`
-	Body       []byte      `json:"body"`
+	StatusCode int         `json:"StatusCode"`
+	Headers    http.Header `json:"Headers"`
+	Body       []byte      `json:"Body"`
 }
 
 type HostAuthFileEntry struct {
