@@ -2,16 +2,62 @@
 
 [CLIProxyAPI (CPA)](https://github.com/router-for-me/CLIProxyAPI) 插件：让管理面板的 Antigravity 账号**同时显示 Gemini 模型和 Claude/GPT 模型的额度**。
 
-![管理面板同时显示 Gemini 模型与 Claude 和 GPT 模型额度](docs/images/quota-panel.png)
-
 ## 解决什么问题
 
-官方管理面板查询 Antigravity 额度时，只能看到「Claude 和 GPT 模型」，看不到「Gemini 模型」。
+官方管理面板查询 Antigravity 额度时，只能看到「Claude 和 GPT 模型」，看不到「Gemini 模型」。装上插件后有两处变化。
 
-装上插件后：
+### 1. 原生管理面板：同时显示两组额度
 
-- **原生管理面板**：额度页直接显示 Gemini 与 Claude/GPT 两组额度（5 小时限额 + 周限额），无需改面板、无需额外操作。
-- **插件看板**：侧边栏新增「Antigravity Quota」页面，汇总所有 Antigravity 账号的两组额度和重置时间。
+额度页的每个 Antigravity 账号都会显示 Gemini 和 Claude/GPT 两组额度，各自带 5 小时限额和周限额。不用改面板，也不需要额外操作：
+
+```text
+alice@example.com                                    套餐 Pro
+│ GEMINI 模型
+│   Five Hour Limit   剩余 93%    2 小时 24 分钟后刷新
+│   ██████████████████████████████████████████████░░░░
+│   Weekly Limit      剩余 66%    15 小时 27 分钟后刷新
+│   █████████████████████████████████░░░░░░░░░░░░░░░░░
+│
+│ CLAUDE 和 GPT 模型
+│   Five Hour Limit   额度可用    4 小时 59 分钟后刷新
+│   ██████████████████████████████████████████████████
+│   Weekly Limit      额度可用    6 天 23 小时后刷新
+│   ██████████████████████████████████████████████████
+```
+
+### 2. 插件看板：所有账号一页看完，并给出合计
+
+侧边栏会多一个「Antigravity Quota」页面：
+
+- **顶部概览**：账号数、Gemini 和 Claude/GPT 各自的最低剩余，以及原生面板补丁是否生效。
+- **全部账号合计**：按 Gemini 和 Claude/GPT 两组，分别把所有账号的 5 小时限额、周限额加在一起，显示合计剩余、平均百分比和最早的重置时间。
+- **账号列表**：每个账号的两组额度和重置倒计时。
+
+```text
+Antigravity 双池额度                                        [刷新额度]
+凭证 3 │ Gemini 最低 20% │ Claude/GPT 最低 80% │ 原生面板修补 已生效
+
+全部账号合计 · 3 个账号
+│ Gemini 模型
+│   5 小时限额   剩 1.6 / 3 个账号   53%   最早 1 小时 18 分后重置
+│   ███████████████████████████░░░░░░░░░░░░░░░░░░░░░░░
+│   周限额       剩 1.4 / 3 个账号   45%   最早 4 天 4 小时后重置
+│   ██████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+│
+│ Claude 和 GPT 模型
+│   5 小时限额   剩 2.8 / 3 个账号   93%   最早 4 小时后重置
+│   ███████████████████████████████████████████████░░░
+│   周限额       剩 2.8 / 3 个账号   93%   最早 6 天后重置
+│   ███████████████████████████████████████████████░░░
+
+alice@example.com                                   Pro · 正常
+│ Gemini Models           5 小时 90%     周 45%
+│ Claude and GPT models   5 小时 100%    周 100%
+
+bob@example.com …
+```
+
+> 「剩 1.6 / 3」表示 3 个账号加起来还剩 1.6 个账号的额度，后面的百分比是平均剩余。获取失败的账号，或者没有返回某种限额的账号，不计入该项合计，会在下方注明数量。
 
 ---
 
@@ -27,19 +73,19 @@
 CPA_DIR=/path/to/CLIProxyAPI   # 改成 CPA 所在目录（config.yaml 所在的目录）
 
 mkdir -p "$CPA_DIR/plugins/linux/amd64"
-curl -fL -o "$CPA_DIR/plugins/linux/amd64/antigravity-category-plugin-v0.1.2.so" \
-  https://github.com/Azurefly/antigravity-category-plugin/releases/download/v0.1.2/antigravity-category-plugin-v0.1.2-linux-amd64.so
+curl -fL -o "$CPA_DIR/plugins/linux/amd64/antigravity-category-plugin-v0.1.3.so" \
+  https://github.com/Azurefly/antigravity-category-plugin/releases/download/v0.1.3/antigravity-category-plugin-v0.1.3-linux-amd64.so
 ```
 
 **其他平台**：从 [Release 页面](https://github.com/Azurefly/antigravity-category-plugin/releases/latest) 下载对应文件，放到下表的目录，**并把文件名改成「保存为」一列的名字**：
 
 | 平台 | 下载文件 | 放到 | 保存为 |
 | :--- | :--- | :--- | :--- |
-| Linux x86_64 | `…-v0.1.2-linux-amd64.so` | `plugins/linux/amd64/` | `antigravity-category-plugin-v0.1.2.so` |
-| Linux ARM64 | `…-v0.1.2-linux-arm64.so` | `plugins/linux/arm64/` | `antigravity-category-plugin-v0.1.2.so` |
-| macOS Apple 芯片 | `…-v0.1.2-darwin-arm64.dylib` | `plugins/darwin/arm64/` | `antigravity-category-plugin-v0.1.2.dylib` |
-| macOS Intel | `…-v0.1.2-darwin-amd64.dylib` | `plugins/darwin/amd64/` | `antigravity-category-plugin-v0.1.2.dylib` |
-| Windows x86_64 | `…-v0.1.2-windows-amd64.dll` | `plugins\windows\amd64\` | `antigravity-category-plugin-v0.1.2.dll` |
+| Linux x86_64 | `…-v0.1.3-linux-amd64.so` | `plugins/linux/amd64/` | `antigravity-category-plugin-v0.1.3.so` |
+| Linux ARM64 | `…-v0.1.3-linux-arm64.so` | `plugins/linux/arm64/` | `antigravity-category-plugin-v0.1.3.so` |
+| macOS Apple 芯片 | `…-v0.1.3-darwin-arm64.dylib` | `plugins/darwin/arm64/` | `antigravity-category-plugin-v0.1.3.dylib` |
+| macOS Intel | `…-v0.1.3-darwin-amd64.dylib` | `plugins/darwin/amd64/` | `antigravity-category-plugin-v0.1.3.dylib` |
+| Windows x86_64 | `…-v0.1.3-windows-amd64.dll` | `plugins\windows\amd64\` | `antigravity-category-plugin-v0.1.3.dll` |
 
 > **Docker 部署**：在 `docker-compose.yml` 所在目录操作，把 `CPA_DIR` 设为 `.` 即可（`./plugins` 已挂载进容器）。
 > Linux 版要求 glibc 2.31 以上（Debian 11+ / Ubuntu 20.04+ / 官方 Docker 镜像均可），不支持 Alpine。
@@ -125,6 +171,11 @@ plugins:
 
 ## 更新日志
 
+### v0.1.3
+
+- 新增：插件看板「全部账号合计」，按 Gemini 与 Claude/GPT 分别合计所有账号的 5 小时限额和周限额，显示合计剩余、平均百分比与最早重置时间。
+- 文档：README 用文字示意图展示效果，替换原截图。
+
 ### v0.1.2
 
 - 修复：插件看板「刷新额度」对所有账号显示「获取失败 · HTTP 0」。CPA 回调返回的状态码字段名与插件解析时不一致，导致正常响应被当成失败；同时恢复订阅等级显示和 QuotaProvider（`quota.fetch`）查询。
@@ -141,5 +192,5 @@ plugins:
 
 ```bash
 go test ./...                 # 运行测试
-sh scripts/build.sh 0.1.2     # 构建当前平台动态库，输出到 dist/
+sh scripts/build.sh 0.1.3     # 构建当前平台动态库，输出到 dist/
 ```

@@ -101,6 +101,13 @@ const pageHTML = `<!DOCTYPE html>
     .chip.bad { background: var(--bad-soft); color: var(--bad); }
     .chip.plain { background: var(--surface-2); color: var(--muted); }
     .chip.plain::before { display: none; }
+    .totals { padding: 14px 16px; margin-bottom: 12px; }
+    .totals:empty { display: none; }
+    .totals-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; margin-bottom: 12px; }
+    .totals-head strong { font-size: 15px; }
+    .total-sum { color: var(--muted); font-weight: 400; margin-right: 8px; font-variant-numeric: tabular-nums; }
+    .total-sum b { color: var(--text); font-weight: 650; }
+    .total-note { color: var(--muted); font-size: 12px; margin-top: 10px; }
     .accounts { display: grid; gap: 12px; }
     .acct { padding: 14px 16px; }
     .acct-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
@@ -161,6 +168,8 @@ const pageHTML = `<!DOCTYPE html>
       <div class="card stat"><div class="label">Claude / GPT 最低剩余</div><div class="value" id="statClaude">-</div><div class="hint" id="statClaudeHint">&nbsp;</div></div>
       <div class="card stat"><div class="label">原生面板修补</div><div class="value" style="font-size:15px;margin-top:6px" id="statPatch">-</div><div class="hint" id="statPatchHint">&nbsp;</div></div>
     </div>
+
+    <div id="totals" class="card totals"></div>
 
     <div id="accounts" class="accounts"><div class="skeleton"></div></div>
 
@@ -369,6 +378,52 @@ const pageHTML = `<!DOCTYPE html>
       return best;
     }
 
+    // Sums each window's remainingFraction across accounts, so "1.6 / 3" means
+    // 1.6 accounts' worth of that limit is left. Accounts that did not report a
+    // window are left out of its sum (and counted as missing) rather than guessed.
+    var TOTAL_POOLS = [['gemini', 'Gemini 模型'], ['claude', 'Claude 和 GPT 模型']];
+    var TOTAL_WINDOWS = ['5 小时限额', '周限额'];
+
+    function renderTotals(accounts) {
+      var withData = accounts.filter(function (a) { return (a.groups || []).length; });
+      if (withData.length < 2) return '';
+      var pools = TOTAL_POOLS.map(function (pool) {
+        var rows = TOTAL_WINDOWS.map(function (label) {
+          var sum = 0, n = 0, reset = '';
+          withData.forEach(function (acc) {
+            var hit = null;
+            (acc.groups || []).forEach(function (g) {
+              if (hit || poolKey(g.displayName) !== pool[0]) return;
+              (g.buckets || []).forEach(function (b) { if (!hit && windowLabel(b) === label) hit = b; });
+            });
+            if (!hit) return;
+            sum += Math.max(0, Math.min(1, Number(hit.remainingFraction) || 0));
+            n++;
+            if (hit.resetTime && (!reset || new Date(hit.resetTime) < new Date(reset))) reset = hit.resetTime;
+          });
+          if (!n) return '';
+          var p = pct(sum / n);
+          var missing = withData.length - n;
+          return '<div class="bucket">' +
+            '<div class="bucket-top"><span>' + label + '</span><span>' +
+              '<span class="total-sum">剩 <b>' + (Math.round(sum * 10) / 10) + '</b> / ' + n + ' 个账号</span>' +
+              '<span class="pct" style="color:' + toneColor(p) + '">' + p + '%</span></span></div>' +
+            '<div class="bar" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + p + '"><i style="width:' + p + '%;background:' + toneColor(p) + '"></i></div>' +
+            (reset ? '<div class="reset">最早 ' + fmtReset(reset) + '</div>' : '') +
+            (missing ? '<div class="reset">' + missing + ' 个账号未返回该限额，未计入</div>' : '') +
+          '</div>';
+        }).join('');
+        return rows
+          ? '<div class="pool"><div class="pool-title"><span>' + pool[1] + '</span></div>' + rows + '</div>'
+          : '<div class="pool missing"><div class="pool-title">' + pool[1] + '</div>没有账号返回该分组</div>';
+      }).join('');
+      var skipped = accounts.length - withData.length;
+      return '<div class="totals-head"><strong>全部账号合计</strong><span class="muted">' + withData.length + ' 个账号' +
+          (skipped ? ' · ' + skipped + ' 个获取失败未计入' : '') + '</span></div>' +
+        '<div class="pools">' + pools + '</div>' +
+        '<div class="total-note">「剩 1.6 / 3」表示 3 个账号合计还剩 1.6 个账号的额度；百分比为平均剩余。</div>';
+    }
+
     function render(data) {
       state.data = data;
       var accounts = data.accounts || [];
@@ -403,9 +458,11 @@ const pageHTML = `<!DOCTYPE html>
         banner('err', '刷新失败：' + esc(data.refresh_error));
       }
       if (!data.refreshed_at) {
+        $('totals').innerHTML = '';
         if (!state.loading) box.innerHTML = '<div class="card empty">尚未获取额度，点击右上角「刷新额度」。</div>';
         return;
       }
+      $('totals').innerHTML = renderTotals(accounts);
       box.innerHTML = accounts.length
         ? accounts.map(renderAccount).join('')
         : '<div class="card empty">没有可用的 Antigravity 凭证（已禁用的凭证不会显示）。</div>';
