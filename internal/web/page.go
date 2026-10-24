@@ -57,6 +57,8 @@ const pageHTML = `<!DOCTYPE html>
       padding: 20px 16px 40px;
       font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
     }
+    /* Inside the Management Center iframe, clear its fixed floating header (actions sit top-right). */
+    html.embedded body { padding-top: calc(var(--host-header-height, 80px) + 12px); }
     .wrap { max-width: 1120px; margin: 0 auto; }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
     .muted { color: var(--muted); }
@@ -199,6 +201,14 @@ const pageHTML = `<!DOCTYPE html>
       var t = window.parent && window.parent !== window && window.parent.document.documentElement.getAttribute('data-theme');
       if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t);
     });
+    // Match the Management Center's own header height so its floating actions don't cover ours.
+    if (window.parent && window.parent !== window) {
+      document.documentElement.classList.add('embedded');
+      safe(function () {
+        var h = window.parent.getComputedStyle(window.parent.document.documentElement).getPropertyValue('--header-height').trim();
+        if (/^\d+(\.\d+)?px$/.test(h)) document.documentElement.style.setProperty('--host-header-height', h);
+      });
+    }
 
     // ---- Management key discovery -------------------------------------------------
     // Mirrors Management Center's reversible localStorage obfuscation (enc::v1:: + XOR).

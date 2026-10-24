@@ -27,19 +27,19 @@
 CPA_DIR=/path/to/CLIProxyAPI   # 改成 CPA 所在目录（config.yaml 所在的目录）
 
 mkdir -p "$CPA_DIR/plugins/linux/amd64"
-curl -fL -o "$CPA_DIR/plugins/linux/amd64/antigravity-category-plugin-v0.1.0.so" \
-  https://github.com/Azurefly/antigravity-category-plugin/releases/download/v0.1.0/antigravity-category-plugin-v0.1.0-linux-amd64.so
+curl -fL -o "$CPA_DIR/plugins/linux/amd64/antigravity-category-plugin-v0.1.1.so" \
+  https://github.com/Azurefly/antigravity-category-plugin/releases/download/v0.1.1/antigravity-category-plugin-v0.1.1-linux-amd64.so
 ```
 
 **其他平台**：从 [Release 页面](https://github.com/Azurefly/antigravity-category-plugin/releases/latest) 下载对应文件，放到下表的目录，**并把文件名改成「保存为」一列的名字**：
 
 | 平台 | 下载文件 | 放到 | 保存为 |
 | :--- | :--- | :--- | :--- |
-| Linux x86_64 | `…-v0.1.0-linux-amd64.so` | `plugins/linux/amd64/` | `antigravity-category-plugin-v0.1.0.so` |
-| Linux ARM64 | `…-v0.1.0-linux-arm64.so` | `plugins/linux/arm64/` | `antigravity-category-plugin-v0.1.0.so` |
-| macOS Apple 芯片 | `…-v0.1.0-darwin-arm64.dylib` | `plugins/darwin/arm64/` | `antigravity-category-plugin-v0.1.0.dylib` |
-| macOS Intel | `…-v0.1.0-darwin-amd64.dylib` | `plugins/darwin/amd64/` | `antigravity-category-plugin-v0.1.0.dylib` |
-| Windows x86_64 | `…-v0.1.0-windows-amd64.dll` | `plugins\windows\amd64\` | `antigravity-category-plugin-v0.1.0.dll` |
+| Linux x86_64 | `…-v0.1.1-linux-amd64.so` | `plugins/linux/amd64/` | `antigravity-category-plugin-v0.1.1.so` |
+| Linux ARM64 | `…-v0.1.1-linux-arm64.so` | `plugins/linux/arm64/` | `antigravity-category-plugin-v0.1.1.so` |
+| macOS Apple 芯片 | `…-v0.1.1-darwin-arm64.dylib` | `plugins/darwin/arm64/` | `antigravity-category-plugin-v0.1.1.dylib` |
+| macOS Intel | `…-v0.1.1-darwin-amd64.dylib` | `plugins/darwin/amd64/` | `antigravity-category-plugin-v0.1.1.dylib` |
+| Windows x86_64 | `…-v0.1.1-windows-amd64.dll` | `plugins\windows\amd64\` | `antigravity-category-plugin-v0.1.1.dll` |
 
 > **Docker 部署**：在 `docker-compose.yml` 所在目录操作，把 `CPA_DIR` 设为 `.` 即可（`./plugins` 已挂载进容器）。
 > Linux 版要求 glibc 2.31 以上（Debian 11+ / Ubuntu 20.04+ / 官方 Docker 镜像均可），不支持 Alpine。
@@ -125,6 +125,10 @@ plugins:
 
 ## 更新日志
 
+### v0.1.1
+
+- 修复：在管理面板中打开「Antigravity Quota」页面时，「刷新额度」按钮被面板右上角的悬浮按钮遮挡。
+
 ### v0.1.0
 
 - 首个版本：原生管理面板显示 Gemini 与 Claude/GPT 两组额度；提供 QuotaProvider 接口与「Antigravity Quota」插件看板。
@@ -133,5 +137,5 @@ plugins:
 
 ```bash
 go test ./...                 # 运行测试
-sh scripts/build.sh 0.1.0     # 构建当前平台动态库，输出到 dist/
+sh scripts/build.sh 0.1.1     # 构建当前平台动态库，输出到 dist/
 ```
